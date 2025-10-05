@@ -15,7 +15,7 @@ def run_inference(question: str, context: str) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="llama-4-maverick-17b-128e-instruct",
+            model="llama-4-scout-17b-16e-instruct",
             messages=[
                     {"role": "system", "content": """You are Guardian, a contextual safety tutor. 
                      Do not go outside the scope of Guardian. If user goes outside the scope of Guardian.
