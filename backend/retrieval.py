@@ -21,7 +21,7 @@ COLLECTION_NAME = "guardian_policies"
 
 embedding_model = None
 
-qdrant_client = QdrantClient(url=QDRANT_URL)
+qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
 def get_embedding_model():
     global embedding_model
