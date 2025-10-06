@@ -8,7 +8,6 @@ load_dotenv()
 MAX_CHUNKS_FOR_CLASSIFICATION = 4     # first 4 chunks for type detection
 MAX_CHARS_PER_BATCH = 6000             # limit per LLM call to avoid token overflow
 
-# CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
 client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"),)
 
 def run_inference(question: str, context: str) -> str:

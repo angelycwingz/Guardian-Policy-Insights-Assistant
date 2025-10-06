@@ -5,12 +5,18 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
 from qdrant_client.http import models as rest
 from langchain.schema import Document
-
-
+from dotenv import load_dotenv
 import time
 import os
 
-QDRANT_URL = "http://localhost:6333"
+load_dotenv()
+
+
+
+QDRANT_URL=os.environ.get("QDRANT_URL", "YOUR_QDRANT_URL_HERE")
+QDRANT_API_KEY=os.environ.get("QDRANT_API_KEY", "YOUR_QDRANT_API_KEY_HERE")
+
+# QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "guardian_policies"
 
 embedding_model = None
