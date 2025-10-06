@@ -13,9 +13,15 @@ import os
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "guardian_policies"
 
-embedding_model = HuggingFaceEmbeddings(model_name="all-mpnet-base-v2")
+embedding_model = None
 
 qdrant_client = QdrantClient(url=QDRANT_URL)
+
+def get_embedding_model():
+    global embedding_model
+    if not embedding_model:
+        embedding_model = HuggingFaceEmbeddings(model_name="all-mpnet-base-v2")
+    return embedding_model
 
 def normalize_filename(filename: str) -> str:
     """Normalize filenames to lowercase and strip spaces for consistent storage & filtering"""
@@ -46,7 +52,7 @@ init_collection()
 # Global vector store (points to the existing/created collection)
 vector_store = QdrantVectorStore(
     client=qdrant_client,
-    embedding=embedding_model,
+    embedding=get_embedding_model(),
     collection_name=COLLECTION_NAME,
 )
 
