@@ -57,14 +57,14 @@ guardian-app/
 │ ├── inference.py # Cerebras inference wrapper
 │ ├── db.py # Document storage + retrieval
 │ ├── web_search.py # Exa search + summarization logic
-│ └── models.py # Pydantic schemas for requests/responses
+│ ├── models.py # Pydantic schemas for requests/responses
+| ├── requirements.txt
+| └── .env.example # Environment variables (API keys, configs)
 │
 ├── frontend/
 │ └── app.py # Streamlit UI
 │
-├── requirements.txt
-├── README.md
-└── .env.example # Environment variables (API keys, configs)
+└── README.md
 
 
 ---
