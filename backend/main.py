@@ -1,11 +1,17 @@
+import sys, os
+print("STARTUP: main.py import started", flush=True)
+print("ENV PORT:", os.environ.get("PORT"), flush=True)
+
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 from inference import run_inference, classify_document, extract_document_advice
 from retrieval import process_pdf, split_documents, embed_vectordb, query_policy, normalize_filename, is_file_already_indexed, fetch_policy
 from schemas import UploadResponse, QueryRequest, QueryResponse, WebSearchRequest, WebSearchResponse, WebQARequest, WebQAResponse
-from web_search import search_web, summarize_web_documents
-import os
+from web_search import summarize_web_documents
+# import os
+
+print("STARTUP: finished imports, creating FastAPI app", flush=True)
 
 app = FastAPI()
 
@@ -96,6 +102,11 @@ async def web_qa(req: WebQARequest):
         return WebQAResponse(answer=answer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.get("/healthz")
+def health_check():
+    return {"status":"ok"}
 
 
 if __name__ == "__main__":
