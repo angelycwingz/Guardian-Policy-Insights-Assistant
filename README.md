@@ -5,6 +5,7 @@ It enables users to **upload, analyze, and query policy documents**, while also 
 
 Whether you’re analyzing a long PDF document or exploring policies across the web, Guardian provides **actionable summaries, key insights, and an interactive Q&A experience**.
 
+📹 Demo Video (Hackathon Submission): [https://www.youtube.com/watch?v=zq--GW5VarM] — Live deployment unavailable as Cerebras inference credits from the hackathon have expired
 ---
 
 ## ✨ Features
