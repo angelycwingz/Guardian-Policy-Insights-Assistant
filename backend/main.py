@@ -2,16 +2,70 @@ import sys, os
 print("STARTUP: main.py import started", flush=True)
 print("ENV PORT:", os.environ.get("PORT"), flush=True)
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
-from inference import run_inference, classify_document, extract_document_advice
-from retrieval import process_pdf, split_documents, embed_vectordb, query_policy, normalize_filename, is_file_already_indexed, fetch_policy
 from schemas import UploadResponse, QueryRequest, QueryResponse, WebSearchRequest, WebSearchResponse, WebQARequest, WebQAResponse
-from web_search import summarize_web_documents
-# import os
 
 print("STARTUP: finished imports, creating FastAPI app", flush=True)
+
+# ── Lazy imports (populated during lifespan startup) ──────────────────────────
+run_inference = None
+classify_document = None
+extract_document_advice = None
+process_pdf = None
+split_documents = None
+embed_vectordb = None
+query_policy = None
+normalize_filename = None
+is_file_already_indexed = None
+fetch_policy = None
+summarize_web_documents = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load heavy modules AFTER the port is bound and server is up."""
+    global run_inference, classify_document, extract_document_advice
+    global process_pdf, split_documents, embed_vectordb, query_policy
+    global normalize_filename, is_file_already_indexed, fetch_policy
+    global summarize_web_documents
+ 
+    print("LIFESPAN: loading inference module...", flush=True)
+    from inference import (
+        run_inference as _run_inference,
+        classify_document as _classify_document,
+        extract_document_advice as _extract_document_advice,
+    )
+    run_inference = _run_inference
+    classify_document = _classify_document
+    extract_document_advice = _extract_document_advice
+ 
+    print("LIFESPAN: loading retrieval module (may download embedding model)...", flush=True)
+    from retrieval import (
+        process_pdf as _process_pdf,
+        split_documents as _split_documents,
+        embed_vectordb as _embed_vectordb,
+        query_policy as _query_policy,
+        normalize_filename as _normalize_filename,
+        is_file_already_indexed as _is_file_already_indexed,
+        fetch_policy as _fetch_policy,
+    )
+    process_pdf = _process_pdf
+    split_documents = _split_documents
+    embed_vectordb = _embed_vectordb
+    query_policy = _query_policy
+    normalize_filename = _normalize_filename
+    is_file_already_indexed = _is_file_already_indexed
+    fetch_policy = _fetch_policy
+ 
+    print("LIFESPAN: loading web_search module...", flush=True)
+    from web_search import summarize_web_documents as _summarize_web_documents
+    summarize_web_documents = _summarize_web_documents
+ 
+    print("LIFESPAN: all modules loaded, app is ready.", flush=True)
+    yield
+    # shutdown logic can go here if needed
 
 app = FastAPI()
 
@@ -22,6 +76,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_doc(file: UploadFile):
@@ -112,5 +167,5 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn, os
     port = int(os.environ.get("PORT", 8000))
-    print(f"✅ Starting server on port {port}")
+    print(f"Starting server on port {port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port)
