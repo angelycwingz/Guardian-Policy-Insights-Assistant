@@ -1,80 +1,93 @@
-from langchain_exa import ExaSearchRetriever
-from langchain.schema import Document
-
-from exa_py import Exa
+# from exa_py import Exa
+from perplexity import Perplexity
 from inference import run_inference
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-EXA_API_KEY = os.environ.get("EXA_API_KEY")
+# EXA_API_KEY = os.environ.get("EXA_API_KEY")
 
 # Initialize Exa retriever
-exa = Exa(api_key = EXA_API_KEY)
+# exa = Exa(api_key = EXA_API_KEY)
+
+# Automatically reads PERPLEXITY_API_KEY from environment
+client = Perplexity()
 
 def search_web(query: str, max_results: int = 5):
     """
     Search the web using Exa and prepare context for inference.
     Returns a list of LangChain Documents.
     """
-    result = exa.search_and_contents(
-      query,
-      type = "auto",
-      num_results = max_results,
-      text={"max_characters": 1000}
+    response = client.chat.completions.create(
+        model="sonar-pro",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a research assistant. Search the web and return well-structured, accurate information with citations."
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+        temperature=0.2,
     )
-    return result.results
+
+    content = response.choices[0].message.content
+
+    # Perplexity natively returns citations and search_results in the response
+    citations = getattr(response, "citations", [])
+    search_results = getattr(response, "search_results", [])
+ 
+    return content, citations, search_results
+ 
 
 
 def summarize_web_documents(query) -> str:
     """
-    Summarize a list of Documents using Cerebras inference.
-    Returns a combined summary string.
+    Search the web via Perplexity sonar-pro and return a structured summary with insights and sources.
     """
-   # Search for sources
-    results = search_web(query, 5)
-    print(f"📊 Found {len(results)} sources")
+    print(f"Searching Perplexity for: {query}")
+ 
+    raw_content, citations, search_results = search_web(query)
+ 
+    print(f"Retrieved {len(search_results)} search results from Perplexity")
 
-    # Get content from sources
-    sources = []
-    for result in results:
-        content = result.text
-        title = result.title
-        if content and len(content) > 200:
-            sources.append({
-                "title": title,
-                "content": content
-            })
+    
+    if not raw_content:
+        return "No results found."
 
-    print(f"📄 Scraped {len(sources)} sources")
-
-    if not sources:
-        return {"summary": "No sources found", "insights": []}
-
-    # Create context for AI analysis
-    context = f"Research query: {query}\n\nSources:\n"
-    for i, source in enumerate(sources[:4], 1):
-        context += f"{i}. {source['title']}: {source['content'][:400]}...\n\n"
-        # ^^ get rid of this to use API params!
-        # best practices - https://www.anthropic.com/engineering/built-multi-agent-research-system
-
-    # Ask AI to analyze and synthesize
-    prompt = f"""{context}
-
-        Based on these sources, provide:
+    # Build a context string using the structured search_results for the synthesis step
+    source_context = ""
+    if search_results:
+        for i, result in enumerate(search_results[:5], 1):
+            title = getattr(result, "title", "Untitled")
+            snippet = getattr(result, "snippet", "")
+            url = getattr(result, "url", "")
+            source_context += f"{i}. {title}: {snippet}\n   Source: {url}\n\n"
+ 
+    # Ask Perplexity to format the final output into summary + insights
+    synthesis_prompt = f"""Based on this research about "{query}":
+        {raw_content}
+        Provide:
         1. A comprehensive summary (2-3 sentences)
         2. Three key insights as bullet points
-
+        
         Format your response exactly like this:
         SUMMARY: [your summary here]
-
+        
         INSIGHTS:
         - [insight 1]
         - [insight 2]
         - [insight 3]"""
 
-    response = run_inference(query, prompt)
-    print("🧠 Analysis complete")
+    response = run_inference(query, synthesis_prompt)
+    print("Analysis complete")
+
+    # Append properly structured citations at the end
+    if citations:
+        response += "\n\nSources:\n" + "\n".join([f"- {url}" for url in citations[:5]])
+ 
 
     return response

@@ -6,7 +6,6 @@ It enables users to **upload, analyze, and query policy documents**, while also 
 Whether you’re analyzing a long PDF document or exploring policies across the web, Guardian provides **actionable summaries, key insights, and an interactive Q&A experience**.
 ---
 
-## 📹 Demo Video (Hackathon Submission): [https://www.youtube.com/watch?v=zq--GW5VarM] — Live deployment unavailable as Cerebras inference credits from the hackathon have expired
 
 ## ✨ Features
 
@@ -135,8 +134,6 @@ Multi-document upload and cross-document Q&A.
 Persistent chat history across sessions.
 
 Richer citations with inline source linking.
-
-Integration with additional retrieval engines (e.g., Tavily, Bing Search).
 
 Improved UI with tabs for Web vs Document Q&A.
 

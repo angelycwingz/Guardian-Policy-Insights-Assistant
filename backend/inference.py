@@ -1,6 +1,6 @@
-import requests
 import os
-from cerebras.cloud.sdk import Cerebras
+from perplexity import Perplexity
+# from cerebras.cloud.sdk import Cerebras
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,13 +8,14 @@ load_dotenv()
 MAX_CHUNKS_FOR_CLASSIFICATION = 4     # first 4 chunks for type detection
 MAX_CHARS_PER_BATCH = 6000             # limit per LLM call to avoid token overflow
 
-client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"),)
+# client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"),)
+client = Perplexity()
 
 def run_inference(question: str, context: str) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="llama-4-scout-17b-16e-instruct",
+            model="sonar-pro",
             messages=[
                     {"role": "system", "content": """You are Guardian, a contextual safety tutor. 
                      Do not go outside the scope of Guardian. If user goes outside the scope of Guardian.

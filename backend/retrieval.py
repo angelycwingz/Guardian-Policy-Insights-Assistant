@@ -51,6 +51,14 @@ def init_collection():
                 full_scan_threshold=10000  # only brute-force for very small sets
             )
         )
+    
+    # Always ensure the payload index exists (safe to call even if it already exists)
+    qdrant_client.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="metadata.source",
+        field_schema=models.PayloadSchemaType.KEYWORD,
+    )
+    print("Payload index on 'metadata.source' ensured.")
 
 # Call once at startup
 init_collection()
