@@ -26,7 +26,7 @@ qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 def get_embedding_model():
     global embedding_model
     if not embedding_model:
-        embedding_model = HuggingFaceEmbeddings(model_name="all-mpnet-base-v2")
+        embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return embedding_model
 
 def normalize_filename(filename: str) -> str:
@@ -44,7 +44,7 @@ def init_collection():
         print(f"Collection '{COLLECTION_NAME}' not found. Creating...")
         qdrant_client.recreate_collection(
             collection_name=COLLECTION_NAME,
-            vectors_config=models.VectorParams(size=768, distance=models.Distance.COSINE),
+            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
             hnsw_config=models.HnswConfigDiff(
                 m=16,                  # graph complexity
                 ef_construct=100,      # build accuracy
