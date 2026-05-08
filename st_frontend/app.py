@@ -2,7 +2,8 @@ import streamlit as st
 import requests
 
 # Backend API base
-API_BASE = "http://localhost:8000"
+# API_BASE = "http://localhost:8000"
+API_BASE = "https://guardian-policy-insights-assistant.onrender.com/"
 
 st.set_page_config(page_title="Guardian – Policy Assistant", layout="wide")
 

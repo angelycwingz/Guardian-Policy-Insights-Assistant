@@ -10,162 +10,122 @@ from schemas import UploadResponse, QueryRequest, QueryResponse, WebSearchReques
 
 print("STARTUP: finished imports, creating FastAPI app", flush=True)
 
-# ── Lazy imports (populated during lifespan startup) ──────────────────────────
-run_inference = None
-classify_document = None
-extract_document_advice = None
-process_pdf = None
-split_documents = None
-embed_vectordb = None
-query_policy = None
-normalize_filename = None
-is_file_already_indexed = None
-fetch_policy = None
-summarize_web_documents = None
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load heavy modules AFTER the port is bound and server is up."""
-    global run_inference, classify_document, extract_document_advice
-    global process_pdf, split_documents, embed_vectordb, query_policy
-    global normalize_filename, is_file_already_indexed, fetch_policy
-    global summarize_web_documents
+    print("LIFESPAN: entered", flush=True)
+    try:
+        # Heavy initialization AFTER port is bound
+        import retrieval
+        retrieval.init_all()
  
-    print("LIFESPAN: loading inference module...", flush=True)
-    from inference import (
-        run_inference as _run_inference,
-        classify_document as _classify_document,
-        extract_document_advice as _extract_document_advice,
-    )
-    run_inference = _run_inference
-    classify_document = _classify_document
-    extract_document_advice = _extract_document_advice
+        from inference import (
+            run_inference as _ri,
+            classify_document as _cd,
+            extract_document_advice as _eda,
+        )
+        app.state.run_inference = _ri
+        app.state.classify_document = _cd
+        app.state.extract_document_advice = _eda
+        app.state.retrieval = retrieval
  
-    print("LIFESPAN: loading retrieval module (may download embedding model)...", flush=True)
-    from retrieval import (
-        process_pdf as _process_pdf,
-        split_documents as _split_documents,
-        embed_vectordb as _embed_vectordb,
-        query_policy as _query_policy,
-        normalize_filename as _normalize_filename,
-        is_file_already_indexed as _is_file_already_indexed,
-        fetch_policy as _fetch_policy,
-    )
-    process_pdf = _process_pdf
-    split_documents = _split_documents
-    embed_vectordb = _embed_vectordb
-    query_policy = _query_policy
-    normalize_filename = _normalize_filename
-    is_file_already_indexed = _is_file_already_indexed
-    fetch_policy = _fetch_policy
+        from web_search import summarize_web_documents as _swd
+        app.state.summarize_web_documents = _swd
  
-    print("LIFESPAN: loading web_search module...", flush=True)
-    from web_search import summarize_web_documents as _summarize_web_documents
-    summarize_web_documents = _summarize_web_documents
- 
-    print("LIFESPAN: all modules loaded, app is ready.", flush=True)
+        print("LIFESPAN: all modules loaded, app is ready.", flush=True)
+    except Exception as e:
+        print(f"LIFESPAN ERROR: {e}", flush=True)
+        raise
     yield
-    # shutdown logic can go here if needed
-
-app = FastAPI()
-
+ 
+ 
+app = FastAPI(lifespan=lifespan)
+ 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For testing; restrict later if needed
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
+ 
+ 
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}
+ 
+ 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_doc(file: UploadFile):
-    # Save uploaded file temporarily
-    try: 
+    try:
+        retrieval = app.state.retrieval
+        classify_document = app.state.classify_document
+        extract_document_advice = app.state.extract_document_advice
+ 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
-        
-        filename = normalize_filename(file.filename)
+ 
+        filename = retrieval.normalize_filename(file.filename)
         print(f"Normalized upload filename: {filename}")
-
-
-        #check if already indexed
-        if is_file_already_indexed(filename):
-            chunks = fetch_policy(filename)
-
+ 
+        if retrieval.is_file_already_indexed(filename):
+            chunks = retrieval.fetch_policy(filename)
         else:
             print(f"Indexing new file: {filename}")
-            docs = process_pdf(tmp_path, filename)
-            chunks = split_documents(docs)
-            embed_vectordb(chunks)
+            docs = retrieval.process_pdf(tmp_path, filename)
+            chunks = retrieval.split_documents(docs)
+            retrieval.embed_vectordb(chunks)
             print(f"Added {len(chunks)} chunks for {filename}")
-
+ 
         os.remove(tmp_path)
-
-        # Guardian "First Look"
+ 
         doc_type = classify_document(chunks)
         insights = extract_document_advice(chunks, doc_type)
-
+ 
         return UploadResponse(status="uploaded", doc_type=doc_type, insights=insights)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
+ 
 @app.post("/query", response_model=QueryResponse)
 async def query_doc(req: QueryRequest):
-    context = query_policy(req.question, req.filename)
-    answer = run_inference(req.question, context)
+    context = app.state.retrieval.query_policy(req.question, req.filename)
+    answer = app.state.run_inference(req.question, context)
     return QueryResponse(answer=answer)
-
-
+ 
+ 
 @app.post("/web/search", response_model=WebSearchResponse)
 async def web_search(req: WebSearchRequest):
-    """Search policies on the web and summarize them"""
     try:
-        # docs = search_web_policy(req.query, max_results=5)
-        summary = summarize_web_documents(req.query)
-
-        return WebSearchResponse(
-            summary=summary
-            # sources=[d.metadata.get("source", "") for d in docs]  # fix here
-        )
+        summary = app.state.summarize_web_documents(req.query)
+        return WebSearchResponse(summary=summary)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
+ 
+ 
 @app.post("/web/qa", response_model=WebQAResponse)
 async def web_qa(req: WebQARequest):
-    """Ask follow-up questions using saved context + chat history"""
     try:
-        # Build conversation string
         conversation = "\n".join(
             [f"User: {turn['user']}\nAssistant: {turn['assistant']}" for turn in req.history]
         )
-
         prompt = f"""
         Context from web search:
         {req.context}
-
+ 
         Conversation so far:
         {conversation}
-
+ 
         Now user asks: {req.query}
         """
-
-        answer = run_inference(req.query, prompt)
-
+        answer = app.state.run_inference(req.query, prompt)
         return WebQAResponse(answer=answer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-
-@app.get("/healthz")
-def health_check():
-    return {"status":"ok"}
-
-
+ 
+ 
 if __name__ == "__main__":
-    import uvicorn, os
+    import uvicorn
     port = int(os.environ.get("PORT", 8000))
     print(f"Starting server on port {port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port)
