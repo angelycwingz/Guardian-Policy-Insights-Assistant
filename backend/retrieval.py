@@ -11,6 +11,8 @@ import os
 
 load_dotenv()
 
+os.environ.setdefault('SENTENCE_TRANSFORMERS_HOME', '/opt/render/project/src/.cache')
+
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "YOUR_QDRANT_URL_HERE")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "YOUR_QDRANT_API_KEY_HERE")
